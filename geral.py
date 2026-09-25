@@ -1,10 +1,14 @@
+
+#[Pokemon, Fator de Poder]
 pokemons = [
-    [6,1.5],
-    [6,1.4],
-    [6,1.3],
-    [6,1.2],
-    [6,1.1]
+    [6, 1.5],#Pikachu
+    [6, 1.4],#Bulbassauro
+    [6, 1.3],#Rattata
+    [6, 1.2],#Caterpiea
+    [6, 1.1] #Weedle
     ]
+
+#[Ginasio, Dificuldade]
 ginasios = [
     ("2", 35),
     ("3", 40),
