@@ -25,106 +25,110 @@ TODO:
 import geral as g
 from treeNode import TreeNode
 import lib as l
-import time
-from queue import PriorityQueue
+import heuristica
+import heapq
 import time
 
 lista_Ginasios = g.ginasios
 lista_Pokemons = g.pokemons
 lista_custo = g.custo
 
+
 def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
 
-    fronteira = []
-    visitados = set()
+    n = len(coordenadas_ginasios)
+    ORIG, DEST = n, n + 1
+    pontos = list(coordenadas_ginasios) + [start_position, end_position]
 
-    h_inicial = l.manhattan_distance(start_position, coordenadas_ginasios)
-    no_inicial = TreeNode(start_position,h_inicial+1,1)
+    # menor custo entre todos os pares de pontos (+ predecessores para reconstruir o caminho)
+    D, prevs = l.matriz_distancias(mapa, pontos)
+    h = heuristica.criar_heuristica(D, n)
 
-    if start_position in coordenadas_ginasios:
-        no_inicial.add_ginasios_visitados(start_position)
-    else:
-        no_inicial.set_ginasios_visitados([])
+    g_inicial = l.custo(mapa, start_position)  # a origem também custa +1
+    visitados_inicial = frozenset()            # no começo nenhum ginásio foi visitado
 
-    fronteira.append(no_inicial)
-    
+    no_inicial = TreeNode(start_position, g_inicial + h(ORIG, visitados_inicial), g_inicial,
+                          ginasios_anteriores=visitados_inicial, indice=ORIG)
+
+    fronteira = [no_inicial]                       # heap de nós (o de menor f fica na frente)
+    melhor_g = {(ORIG, visitados_inicial): g_inicial}   # menor g já encontrado de cada estado
+    fechados = set()                               # estados já expandidos
+    expandidos = 0
+    inicio = time.time()
+
     while fronteira:
-        no_atual = min(fronteira, key= lambda node: node.get_priority())
-        fronteira.remove(no_atual)
+        no_atual = heapq.heappop(fronteira)        # nó de menor f
+        visitados = no_atual.get_ginasios_visitados()
 
-        pos_atual = no_atual.get_coord()
-        g_atual = no_atual.get_value_gx()
-        ginasios_visitados_atual = no_atual.get_ginasios_visitados()
+        estado = (no_atual.indice, visitados)
+        if estado in fechados:
+            continue                               # já expandi este estado, ignora
+        fechados.add(estado)
+        expandidos += 1
 
-        ultimo_no_expandido = no_atual
+        # ---- chegou em U (só é gerado depois de visitar todos): reconstrói e devolve ----
+        if no_atual.indice == DEST:
+            indices = []
+            no = no_atual
+            while no is not None:
+                indices.append(no.indice)
+                no = no.get_parent()
+            indices.reverse()                      # [ORIG, g1, g2, ..., g24, DEST]
 
-        if pos_atual in coordenadas_ginasios and pos_atual not in ginasios_visitados_atual:
-            no_atual.add_ginasios_visitados(pos_atual)
-            ginasios_visitados_atual = no_atual.get_ginasios_visitados()
-            
+            # caminho célula a célula (concatena os caminhos do Dijkstra entre pontos consecutivos)
+            celulas = [start_position]
+            for a, b in zip(indices, indices[1:]):
+                celulas += l.caminho_dijkstra(prevs[a], pontos[a], pontos[b])[1:]
 
-        if pos_atual == end_position and len(ginasios_visitados_atual) == len(coordenadas_ginasios):
-            print("acabou")
-            caminho = []
-            no_temporario = no_atual
-            while no_temporario is not None:
-                caminho.append(no_temporario.get_coord())
-                no_temporario = no_temporario.get_parent()
-            
-            # Como o caminho foi pego de trás para frente (do Fim pro Início), invertemos:
-            caminho.reverse()
-            
-            print("\n--- CAMINHO ENCONTRADO! ---")
-            print("Passos:", caminho)
-            print("Total de ginásios visitados:", len(ginasios_visitados_atual))
+            ordem = [mapa[pontos[i][1]][pontos[i][0]] for i in indices[1:-1]]
+            return {
+                "no": no_atual,
+                "custo": no_atual.get_value_gx(),
+                "ordem": ordem,                    # símbolos dos ginásios, na ordem de visita
+                "celulas": celulas,                # lista de (x, y) do caminho completo
+                "expandidos": expandidos,
+                "tempo": time.time() - inicio,
+            }
 
-            return no_atual
+        # ---- expande: ir para cada ginásio ainda não visitado (ou para U se todos visitados) ----
+        if len(visitados) == n:
+            proximos = [DEST]
+        else:
+            proximos = [k for k in range(n) if k not in visitados]
 
-        estado_atual = (pos_atual, tuple(sorted(ginasios_visitados_atual)))
-        if estado_atual in visitados:
-            continue
-        visitados.add(estado_atual)
-
-        visinhos = l.get_neighborhood(mapa, pos_atual)
-
-        #l.printMap(mapa,pos_atual)
-        #time.sleep(0.09)
-
-        for visinho in visinhos:
-            coord_visinho= visinho[0]
-            custo_visinho = visinho[1]
-
-            g_novo = g_atual +custo_visinho
-
-            ginasios_pendentes = [g for g in coordenadas_ginasios if g not in ginasios_visitados_atual]
-            if len(ginasios_pendentes) == 0:
-                # Se JÁ visitou todos os 24 ginásios, a prioridade agora é chegar no FIM (end_position)
-                h_novo = abs(coord_visinho[0] - end_position[0]) + abs(coord_visinho[1] - end_position[1])
+        for k in proximos:
+            if k < n:
+                novos_visitados = visitados | {k}  # mesmo conjunto, mais o ginásio k
             else:
-                # Se ainda faltam ginásios, calcula a distância até o ginásio pendente mais próximo
-                h_novo = l.manhattan_distance(coord_visinho, ginasios_pendentes)
-            copia_ginasios = list(ginasios_visitados_atual)
-            novo_no = TreeNode(coord_visinho, h_novo + g_novo, g_novo, ginasios_anteriores=copia_ginasios)
+                novos_visitados = visitados        # ir para U não muda os visitados
+            vizinho = (k, novos_visitados)
 
-            if coord_visinho in coordenadas_ginasios and coord_visinho not in novo_no.get_ginasios_visitados():
-                novo_no.add_ginasios_visitados(coord_visinho)
+            g_novo = no_atual.get_value_gx() + D[no_atual.indice][k]
+            if g_novo >= melhor_g.get(vizinho, float("inf")):
+                continue                           # já existe um caminho igual ou melhor até esse estado
+            melhor_g[vizinho] = g_novo
 
+            f_novo = g_novo + h(k, novos_visitados)
+            novo_no = TreeNode(pontos[k], f_novo, g_novo,
+                               ginasios_anteriores=novos_visitados, indice=k)
             novo_no.set_parent(no_atual)
-            no_atual.add_child(novo_no)
+            heapq.heappush(fronteira, novo_no)
 
-            fronteira.append(novo_no)
-
-    print("Coordenadas Ginasios",coordenadas_ginasios)
-    
     print("--- A* FALHOU ---")
-    print(f"Coordenada final que ele tentou: {ultimo_no_expandido.get_coord()}")
-    print(f"Ginásios visitados por ele: {ultimo_no_expandido.get_ginasios_visitados()}")
-    print(f"Total de ginásios visitados: {len(ultimo_no_expandido.get_ginasios_visitados())}")
     return None
 
 
-nome_mapa = 'mapa.txt'
-mapa, start, end = l.read_file(nome_mapa)
-pos_atual = start
-l.printMap(mapa,start)
-busca_a_estrela(mapa,start,end,l.buscar_ginasios(mapa, lista_Ginasios) )
+if __name__ == "__main__":
+    nome_mapa = 'mapa.txt'
+    mapa, start, end = l.read_file(nome_mapa)
+    coordenadas_ginasios = l.buscar_ginasios(mapa, lista_Ginasios)
+
+    resultado = busca_a_estrela(mapa, start, end, coordenadas_ginasios)
+
+    if resultado is not None:
+        print("\n--- CAMINHO ENCONTRADO! ---")
+        print("Ordem dos ginásios:", " -> ".join(["1"] + resultado["ordem"] + ["U"]))
+        print("Custo da rota:", resultado["custo"])
+        print("Estados expandidos:", resultado["expandidos"])
+        print(f"Tempo da busca: {resultado['tempo']:.1f}s")
+        print("Células no caminho:", len(resultado["celulas"]))

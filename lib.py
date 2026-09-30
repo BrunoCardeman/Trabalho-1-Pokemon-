@@ -1,5 +1,6 @@
 
-import math
+
+import heapq
 import geral as g
 num_lins = 0
 num_cols = 0
@@ -50,23 +51,10 @@ def get_char_from_map(mapa, coord):
     return mapa[coord[1]][coord[0]]
 
 def get_value(c):
-    
-    v = -1
-
-    if c == '.' or c == 'I' or c == 'F':
-        v = 1
-    elif c == 'X':
-        v = -1
-
-    return v
-
-def get_value_from_map(mapa, coord):
-    return get_value(get_char_from_map(mapa, coord))
+    return 1
 
 def add_valid_pos(nb, mapa, coord):        
-    if get_value_from_map(mapa, coord) > -1:
-        nb.append([coord, custo(mapa,coord)])
-
+    nb.append([coord, custo(mapa, coord)])
 def get_neighborhood(mapa, coord):
     
     nb = []
@@ -93,13 +81,6 @@ def get_neighborhood(mapa, coord):
     
     return nb
 
-def manhattan_distance(posicao_atual, ginasios_pendentes):
-    if not ginasios_pendentes:
-        return 0 # Se já visitou todos, o custo heurístico para os ginásios é 0
-    
-    # Retorna a menor distância Manhattan entre a posição atual e QUALQUER ginásio pendente
-    return min(abs(posicao_atual[0] - g[0]) + abs(posicao_atual[1] - g[1]) for g in ginasios_pendentes)
-
 
 def buscar_ginasios(mapa, ginasios):
     coordenadas_ginasios = []
@@ -124,3 +105,39 @@ def custo(mapa, cord):
     # Se for um ginásio, o início ('1') ou o fim ('U'), custa 1 por padrão para caminhar por cima
     else:
         return 1
+
+
+def dijkstra(mapa, origem):
+    """Menor custo da origem até todas as células (custo = soma do custo() das células em que se ENTRA)."""
+    dist = {origem: 0}
+    prev = {}
+    fila = [(0, origem)]
+    while fila:
+        d, atual = heapq.heappop(fila)
+        if d > dist[atual]:
+            continue
+        for vizinho, custo_vizinho in get_neighborhood(mapa, atual):
+            nd = d + custo_vizinho
+            if nd < dist.get(vizinho, float("inf")):
+                dist[vizinho] = nd
+                prev[vizinho] = atual
+                heapq.heappush(fila, (nd, vizinho))
+    return dist, prev
+
+
+def matriz_distancias(mapa, pontos):
+    """D[a][b] = menor custo de pontos[a] até pontos[b]; prevs[a] serve para reconstruir o caminho."""
+    D, prevs = [], []
+    for origem in pontos:
+        dist, prev = dijkstra(mapa, origem)
+        D.append([dist[destino] for destino in pontos])
+        prevs.append(prev)
+    return D, prevs
+
+
+def caminho_dijkstra(prev, a, b):
+    caminho = [b]
+    while caminho[-1] != a:
+        caminho.append(prev[caminho[-1]])
+    caminho.reverse()
+    return caminho
