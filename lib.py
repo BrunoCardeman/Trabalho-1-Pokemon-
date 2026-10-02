@@ -55,6 +55,7 @@ def get_value(c):
 
 def add_valid_pos(nb, mapa, coord):        
     nb.append([coord, custo(mapa, coord)])
+
 def get_neighborhood(mapa, coord):
     
     nb = []
@@ -81,7 +82,6 @@ def get_neighborhood(mapa, coord):
     
     return nb
 
-
 def buscar_ginasios(mapa, ginasios):
     coordenadas_ginasios = []
     
@@ -106,7 +106,6 @@ def custo(mapa, cord):
     else:
         return 1
 
-
 def dijkstra(mapa, origem):
     """Menor custo da origem até todas as células (custo = soma do custo() das células em que se ENTRA)."""
     dist = {origem: 0}
@@ -124,7 +123,6 @@ def dijkstra(mapa, origem):
                 heapq.heappush(fila, (nd, vizinho))
     return dist, prev
 
-
 def matriz_distancias(mapa, pontos):
     """D[a][b] = menor custo de pontos[a] até pontos[b]; prevs[a] serve para reconstruir o caminho."""
     D, prevs = [], []
@@ -134,10 +132,20 @@ def matriz_distancias(mapa, pontos):
         prevs.append(prev)
     return D, prevs
 
-
 def caminho_dijkstra(prev, a, b):
     caminho = [b]
     while caminho[-1] != a:
         caminho.append(prev[caminho[-1]])
     caminho.reverse()
     return caminho
+
+def calc_solution_map(mapa, celulas):
+    """Devolve uma CÓPIA do mapa com o caminho completo (célula a célula) desenhado."""
+    mapa_sol = list(mapa)   # cópia da lista de linhas, para não estragar o mapa original
+    for x, y in celulas:
+        mapa_sol[y] = mapa_sol[y][:x] + '█' + mapa_sol[y][x+1:]
+    return mapa_sol
+
+
+def print_solution_map(mapa, celulas, end):
+    printMap(calc_solution_map(mapa, celulas), end)

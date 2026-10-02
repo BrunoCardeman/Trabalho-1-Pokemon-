@@ -57,6 +57,7 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
     inicio = time.time()
 
     while fronteira:
+
         no_atual = heapq.heappop(fronteira)        # nó de menor f
         visitados = no_atual.get_ginasios_visitados()
 
@@ -65,6 +66,9 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
             continue                               # já expandi este estado, ignora
         fechados.add(estado)
         expandidos += 1
+
+        #l.printMap(mapa,no_atual.coord)
+        #time.sleep(0.1)
 
         # ---- chegou em U (só é gerado depois de visitar todos): reconstrói e devolve ----
         if no_atual.indice == DEST:
@@ -124,6 +128,8 @@ if __name__ == "__main__":
     coordenadas_ginasios = l.buscar_ginasios(mapa, lista_Ginasios)
 
     resultado = busca_a_estrela(mapa, start, end, coordenadas_ginasios)
+
+    l.print_solution_map(mapa,  resultado["celulas"],end)
 
     if resultado is not None:
         print("\n--- CAMINHO ENCONTRADO! ---")
