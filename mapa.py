@@ -1,15 +1,16 @@
 import pygame
 import sys
-
+import os
+import random
 
 # =========================
 # CONFIGURAÇÕES
 # =========================
 
-TILE_SIZE = 32
+TILE_SIZE = 10
 
-LARGURA_TELA = 1200
-ALTURA_TELA = 700
+LARGURA_TELA = 1505
+ALTURA_TELA = 420
 
 mapa = []
 
@@ -19,104 +20,147 @@ mapa = []
 # =========================
 
 def load_mapa(filename):
+
     global mapa
 
     mapa = []
 
-    file = open(filename, "r")
+    with open(filename, "r", encoding="utf-8") as file:
 
-    for line in file.readlines():
-        # Remove somente o \n do final da linha
-        linha = line.rstrip("\n")
+        for line in file.readlines():
 
-        # Transforma a linha em uma lista de caracteres
-        mapa.append(list(linha))
+            linha = line.rstrip("\n")
 
-    file.close()
+            nova_linha = []
+
+            for simbolo in linha:
+
+                # =========================
+                # FLORESTA
+                # =========================
+
+                if simbolo == "F":
+
+                    tipo_floresta = random.choices(
+                        ["F", "FC"],
+                        weights=[95, 5],
+                        k=1
+                    )[0]
+
+                    nova_linha.append(tipo_floresta)
+
+                else:
+
+                    nova_linha.append(simbolo)
+
+            mapa.append(nova_linha)
 
 
 # =========================
-# CRIAÇÃO DOS TILES
+# CARREGAR SPRITES
 # =========================
 
-def criar_tiles():
+def carregar_sprites():
 
-    tile_montanha = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    tile_montanha.fill((139, 69, 19))
+    pasta = "sprites"
 
-    tile_agua = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    tile_agua.fill((0, 120, 255))
+    sprites = {}
 
-    tile_floresta = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    tile_floresta.fill((0, 180, 0))
+    sprites["M"] = pygame.image.load(
+        os.path.join(pasta, "montanha.png")
+    ).convert()
 
-    tile_rochoso = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    tile_rochoso.fill((130, 130, 130))
+    sprites["A"] = pygame.image.load(
+        os.path.join(pasta, "agua.png")
+    ).convert()
 
-    tile_livre = pygame.Surface((TILE_SIZE, TILE_SIZE))
-    tile_livre.fill((255, 255, 255))
+    sprites["F"] = pygame.image.load(
+        os.path.join(pasta, "floresta.jpg")
+    ).convert()
 
-    return (
-        tile_montanha,
-        tile_agua,
-        tile_floresta,
-        tile_rochoso,
-        tile_livre
-    )
+    sprites["FC"] = pygame.image.load(
+        os.path.join(pasta, "floresta_caterpie.jpg")
+    ).convert()
+
+    sprites["R"] = pygame.image.load(
+        os.path.join(pasta, "pedra.png")
+    ).convert()
+
+    sprites["."] = pygame.image.load(
+        os.path.join(pasta, "grama.jpg")
+    ).convert()
+
+    sprites["GYM"] = pygame.image.load(
+        os.path.join(pasta, "gym.jpg")
+    ).convert()
+
+    # Ajusta os sprites para o tamanho dos tiles
+    for simbolo in sprites:
+
+        sprites[simbolo] = pygame.transform.scale(
+            sprites[simbolo],
+            (TILE_SIZE, TILE_SIZE)
+        )
+
+    return sprites
 
 
 # =========================
 # DESENHAR MAPA
 # =========================
 
-def draw_screen(screen, tiles, camera_x, camera_y):
-
-    tile_montanha = tiles[0]
-    tile_agua = tiles[1]
-    tile_floresta = tiles[2]
-    tile_rochoso = tiles[3]
-    tile_livre = tiles[4]
+def draw_screen(screen, sprites):
 
     screen.fill((0, 0, 0))
 
+    # Símbolos que representam ginásios
+    simbolos_gym = [
+        "2", "3", "4", "5", "6", "7", "8", "9",
+        "B", "C", "D", "E", "G", "H", "I", "J",
+        "K", "L", "N", "O", "P", "Q", "S", "T"
+    ]
+
     for i in range(len(mapa)):
+
         for j in range(len(mapa[i])):
 
-            x = j * TILE_SIZE - camera_x
-            y = i * TILE_SIZE - camera_y
+            x = j * TILE_SIZE
+            y = i * TILE_SIZE
 
-            # Não desenha tiles que estão completamente fora da tela
-            if x + TILE_SIZE < 0:
-                continue
+            simbolo = mapa[i][j]
 
-            if x > LARGURA_TELA:
-                continue
+            # =========================
+            # GINÁSIOS
+            # =========================
 
-            if y + TILE_SIZE < 0:
-                continue
+            if simbolo in simbolos_gym:
 
-            if y > ALTURA_TELA:
-                continue
+                screen.blit(
+                    sprites["GYM"],
+                    (x, y)
+                )
 
-            if mapa[i][j] == "M":
-                screen.blit(tile_montanha, (x, y))
+            # =========================
+            # OUTROS SPRITES
+            # =========================
 
-            elif mapa[i][j] == "A":
-                screen.blit(tile_agua, (x, y))
+            elif simbolo in sprites:
 
-            elif mapa[i][j] == "F":
-                screen.blit(tile_floresta, (x, y))
+                screen.blit(
+                    sprites[simbolo],
+                    (x, y)
+                )
 
-            elif mapa[i][j] == "R":
-                screen.blit(tile_rochoso, (x, y))
-
-            elif mapa[i][j] == ".":
-                screen.blit(tile_livre, (x, y))
+            # =========================
+            # SÍMBOLOS DESCONHECIDOS
+            # =========================
 
             else:
-                # Por enquanto, ginásios e outros símbolos
-                # aparecem como terreno livre
-                screen.blit(tile_livre, (x, y))
+
+                screen.blit(
+                    sprites["."],
+                    (x, y)
+                )
 
 
 # =========================
@@ -131,19 +175,18 @@ def main():
         (LARGURA_TELA, ALTURA_TELA)
     )
 
-    pygame.display.set_caption("Mapa - Região de Kanto")
+    pygame.display.set_caption(
+        "Mapa - Região de Kanto"
+    )
 
     clock = pygame.time.Clock()
 
     # Carrega o mapa
-    load_mapa("Mapa.txt")
+    # Aqui os Caterpies são sorteados
+    load_mapa("mapa.txt")
 
-    # Cria os tiles
-    tiles = criar_tiles()
-
-    # Posição da câmera
-    camera_x = 0
-    camera_y = 0
+    # Carrega os sprites
+    sprites = carregar_sprites()
 
     rodando = True
 
@@ -159,30 +202,25 @@ def main():
                 rodando = False
 
         # =========================
-        # MOVIMENTO DA CÂMERA
+        # DESENHAR MAPA
         # =========================
 
-        keys = pygame.key.get_pressed()
+        draw_screen(
+            screen,
+            sprites
+        )
 
-        velocidade_camera = 10
+        pygame.display.flip()
 
-        if keys[pygame.K_LEFT]:
-            camera_x -= velocidade_camera
+        clock.tick(60)
 
-        if keys[pygame.K_RIGHT]:
-            camera_x += velocidade_camera
+    pygame.quit()
+    sys.exit()
 
-        if keys[pygame.K_UP]:
-            camera_y -= velocidade_camera
 
-        if keys[pygame.K_DOWN]:
-            camera_y += velocidade_camera
+# =========================
+# EXECUÇÃO
+# =========================
 
-        # =========================
-        # LIMITES DA CÂMERA
-        # =========================
-
-        largura_mapa = len(mapa[0]) * TILE_SIZE
-        altura_mapa = len(mapa) * TILE_SIZE
-
-        camera_x = max(0, camera_x)
+if __name__ == "__main__":
+    main()
