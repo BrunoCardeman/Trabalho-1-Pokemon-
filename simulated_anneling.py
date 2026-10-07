@@ -17,11 +17,10 @@ from geral import treeNode
 # geral.pokemons = [[energia, poder], ...] na ordem abaixo (não guarda os nomes)
 NOMES = ["Pikachu", "Bulbassauro", "Rattata", "Caterpie", "Weedle"]
 PODER = {}
-for par in zip(NOMES, geral.pokemons):
-    nome = par[0]            # ex.: "Pikachu"
-    dados = par[1]           # ex.: [6, 1.5]
-    energia = dados[0]       # 6   (não usado aqui)
-    poder = dados[1]         # 1.5
+PODER = {}
+for i in range(len(NOMES)):
+    nome = NOMES[i]                 # ex.: i = 0  ->  "Pikachu"
+    poder = geral.pokemons[i][1]    # ex.: i = 0  ->  [6, 1.5][1]  ->  1.5
     PODER[nome] = poder
 ENERGIA = geral.pokemons[0][0]            # todos começam com a mesma energia (6)
 DIFICULDADE = dict(geral.ginasios)        # {"2": 35, "3": 40, ...}
