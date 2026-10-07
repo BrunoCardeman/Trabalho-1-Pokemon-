@@ -11,7 +11,7 @@ import statistics
 from itertools import combinations
 
 import geral
-from geral import TreeNode
+from geral import treeNode
 
 # ------------------------- CONFIGURAÇÃO (lida do geral.py) -------------------------
 # geral.pokemons = [[energia, poder], ...] na ordem abaixo (não guarda os nomes)
