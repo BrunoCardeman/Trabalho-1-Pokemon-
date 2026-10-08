@@ -117,13 +117,32 @@ def simulated_annealing(T=50.0, alpha=0.9999, T_min=0.001):
 # h(x):   soma das dificuldades restantes / poder de TODOS os acordados.
 #         Nenhuma equipe é mais forte que "todos juntos", então h nunca
 #         superestima => h é admissível => o A* acha o ótimo.
+       # o "set(c)" do começo da linha
 
-EQUIPES = [set(c) for r in range(1, len(POKEMONS) + 1) for c in combinations(POKEMONS, r)]
+equipes = [[]]                        # começa só com a equipe vazia
+for p in POKEMONS:
+    novas = []
+    for eq in equipes:
+        novas.append(eq)              # versão SEM o Pokémon p
+        novas.append(eq + [p])        # versão COM o Pokémon p
+    equipes = novas
 
+EQUIPES = []
+for eq in equipes:
+    if len(eq) > 0:                   # descarta a equipe vazia
+        EQUIPES.append(eq)
 
 def h(i, energia):
-    poder = sum(PODER[p] for p, e in zip(POKEMONS, energia) if e > 0)
-    return sum(DIFICULDADE[g] for g in GINASIOS[i:]) / poder if poder else math.inf
+    poder = 0
+    for k in range(len(POKEMONS)):
+        if energia[k] > 0:
+            poder = poder + PODER[POKEMONS[k]]
+    if poder == 0:
+        return math.inf
+      
+    total_dificuldade = 0
+    for g in GINASIOS[i:]:
+        total_dificuldade = total_dificuldade + DIFICULDADE[g]
 
 
 def a_estrela():
@@ -146,7 +165,15 @@ def a_estrela():
         expandidos += 1
 
         for equipe in EQUIPES:
-            nova = tuple(e - (p in equipe) for p, e in zip(POKEMONS, energia))
+          nova = []
+          for k in range(len(POKEMONS)):
+              p = POKEMONS[k]          # nome do Pokémon na posição k
+              e = energia[k]           # energia dele agora
+              if p in equipe:
+                  nova.append(e - 1)   # luta nesse ginásio: gasta 1
+              else:
+                  nova.append(e)       # não luta: energia igual
+            nova = tuple(nova)
             if min(nova) < 0 or (i == len(GINASIOS) - 1 and max(nova) == 0):
                 continue                              # equipe inválida
             coord = (i + 1, nova)
