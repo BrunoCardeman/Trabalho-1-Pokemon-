@@ -68,11 +68,13 @@ def valida(sol):
 # ------------------------- SOLUÇÃO INICIAL E VIZINHANÇA -------------------------
 
 def solucao_inicial():
-    # um Pokémon por ginásio, em rodízio (cada um luta 4 ou 5 vezes => válida)
-    sol = [{POKEMONS[i % len(POKEMONS)]} for i in range(len(GINASIOS))]
-    random.shuffle(sol)
+    sol = []
+    for i in range(len(GINASIOS)):                # um ginásio de cada vez (24 ao todo)
+        posicao = i % len(POKEMONS)               # 0, 1, 2, 3, 4, 0, 1, 2, ...
+        pokemon = POKEMONS[posicao]               # Pikachu, Bulbassauro, ..., Weedle, Pikachu, ...
+        sol.append([pokemon])                     # a equipe desse ginásio tem só esse Pokémon
+    random.shuffle(sol)                           # embaralha a ordem das equipes
     return sol
-
 
 def vizinho(sol):
     """Gera vizinhos aleatórios até achar um VÁLIDO (os inválidos são descartados)."""
@@ -82,7 +84,7 @@ def vizinho(sol):
             nova.append(list(equipe))        # copia cada equipe (lista nova)
         a, b = random.sample(range(len(nova)), 2)
         p, q = random.sample(POKEMONS, 2)
-        op = random.randrange(3)
+        op = random.choice([0, 1, 2])
         if op == 0:                          # coloca ou tira o Pokémon p do ginásio a
             if p in nova[a]:
                 nova[a].remove(p)
@@ -208,9 +210,12 @@ def a_estrela():
 
 def mostra(sol):
     for i in range(len(GINASIOS)):
-        g = GINASIOS[i]          # ex.: "2"
-        equipe = sol[i]          # ex.: {"Weedle"}
-        print(f"  Ginásio {g:>2} ({DIFICULDADE[g]:>3}): {', '.join(sorted(equipe)):<26} {tempo(g, equipe):7.3f}")
+        g = GINASIOS[i]
+        equipe = sol[i]
+        dificuldade = DIFICULDADE[g]
+        t = tempo(g, equipe)
+        print(f"  Ginásio {g:>2} ({dificuldade:>3}): {str(equipe):<26} {t:7.3f}")
+
     print("  Energia final:", energia_final(sol))
     print(f"  C_batalhas = {custo(sol):.4f}")
 
@@ -226,9 +231,18 @@ if __name__ == "__main__":
         if c == min(resultados):
             melhor_sol = sol
 
+    # média
+    media = sum(resultados) / len(resultados)
+
+    # desvio-padrão (amostral: divide por N - 1)
+    soma = 0
+    for c in resultados:
+        soma = soma + (c - media) ** 2      # distância de cada resultado até a média, ao quadrado
+    desvio = (soma / (len(resultados) - 1)) ** 0.5   # raiz quadrada
+
     print(f"SIMULATED ANNEALING ({N} execuções)")
-    print(f"  melhor = {min(resultados):.4f}   média = {statistics.mean(resultados):.4f}"
-          f"   desvio-padrão = {statistics.stdev(resultados):.4f}")
+    print(f"  melhor = {min(resultados):.4f}   média = {media:.4f}"
+          f"   desvio-padrão = {desvio:.4f}")
     mostra(melhor_sol)
 
     print("\nA* (ótimo global)")
