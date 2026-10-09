@@ -77,17 +77,24 @@ def solucao_inicial():
 def vizinho(sol):
     """Gera vizinhos aleatórios até achar um VÁLIDO (os inválidos são descartados)."""
     while True:
-        nova = [set(equipe) for equipe in sol]
+        nova = []
+        for equipe in sol:
+            nova.append(list(equipe))        # copia cada equipe (lista nova)
         a, b = random.sample(range(len(nova)), 2)
         p, q = random.sample(POKEMONS, 2)
         op = random.randrange(3)
-        if op == 0:                      # coloca ou tira o Pokémon p do ginásio a
-            nova[a] ^= {p}
-        elif op == 1:                    # troca as equipes inteiras dos ginásios a e b
+        if op == 0:                          # coloca ou tira o Pokémon p do ginásio a
+            if p in nova[a]:
+                nova[a].remove(p)
+            else:
+                nova[a].append(p)
+        elif op == 1:                        # troca as equipes inteiras dos ginásios a e b
             nova[a], nova[b] = nova[b], nova[a]
         elif p in nova[a] and q in nova[b] and q not in nova[a] and p not in nova[b]:
-            nova[a] = nova[a] - {p} | {q}    # p e q trocam de ginásio
-            nova[b] = nova[b] - {q} | {p}
+            nova[a].remove(p)                # p sai do ginásio a...
+            nova[a].append(q)                # ...e q entra no lugar
+            nova[b].remove(q)                # q sai do ginásio b...
+            nova[b].append(p)                # ...e p entra no lugar
         if nova != sol and valida(nova):
             return nova
 
@@ -188,7 +195,9 @@ def a_estrela():
 # ------------------------- EXECUÇÃO -------------------------
 
 def mostra(sol):
-    for g, equipe in zip(GINASIOS, sol):
+    for i in range(len(GINASIOS)):
+        g = GINASIOS[i]          # ex.: "2"
+        equipe = sol[i]          # ex.: {"Weedle"}
         print(f"  Ginásio {g:>2} ({DIFICULDADE[g]:>3}): {', '.join(sorted(equipe)):<26} {tempo(g, equipe):7.3f}")
     print("  Energia final:", energia_final(sol))
     print(f"  C_batalhas = {custo(sol):.4f}")
