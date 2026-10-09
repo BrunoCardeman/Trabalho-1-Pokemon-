@@ -159,7 +159,7 @@ def a_estrela():
     expandidos = 0
 
     while fronteira:
-        no = heapq.heappop(fronteira)
+        no = fronteira.pop()                          # o último é o de menor f(x)
         i, energia = no.get_coord()
         if no.get_value_gx() > melhor_g[no.get_coord()]:
             continue                                  # já achamos caminho melhor
@@ -172,15 +172,17 @@ def a_estrela():
         expandidos += 1
 
         for equipe in EQUIPES:
-          nova = []
-          for k in range(len(POKEMONS)):
-              p = POKEMONS[k]          # nome do Pokémon na posição k
-              e = energia[k]           # energia dele agora
-              if p in equipe:
-                  nova.append(e - 1)   # luta nesse ginásio: gasta 1
-              else:
-                  nova.append(e)       # não luta: energia igual
+            # energia de cada Pokémon depois desta batalha
+            nova = []
+            for k in range(len(POKEMONS)):
+                p = POKEMONS[k]                       # nome do Pokémon na posição k
+                e = energia[k]                        # energia dele agora
+                if p in equipe:
+                    nova.append(e - 1)                # luta nesse ginásio: gasta 1
+                else:
+                    nova.append(e)                    # não luta: energia igual
             nova = tuple(nova)
+
             if min(nova) < 0 or (i == len(GINASIOS) - 1 and max(nova) == 0):
                 continue                              # equipe inválida
             coord = (i + 1, nova)
@@ -189,7 +191,17 @@ def a_estrela():
                 melhor_g[coord] = gx
                 filho = TreeNode(coord, gx + h(*coord), gx=gx, indice=equipe)
                 filho.set_parent(no)
-                heapq.heappush(fronteira, filho)
+
+                # coloca o filho na fronteira mantendo a ordem
+                # (do MAIOR f(x) para o MENOR, para o menor ficar no fim)
+                ini, fim = 0, len(fronteira)
+                while ini < fim:
+                    meio = (ini + fim) // 2
+                    if fronteira[meio] < filho:
+                        fim = meio
+                    else:
+                        ini = meio + 1
+                fronteira.insert(ini, filho)
 
 
 # ------------------------- EXECUÇÃO -------------------------
