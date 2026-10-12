@@ -27,6 +27,7 @@ from treeNode import TreeNode
 import lib as l
 import heuristica
 import heapq
+import simulated_anneling as sa
 
 lista_Ginasios = g.ginasios
 lista_Pokemons = g.pokemons
@@ -34,7 +35,6 @@ lista_custo = g.custo
 
 
 def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
-
     n = len(coordenadas_ginasios)
     ORIG, DEST = n, n + 1
     pontos = list(coordenadas_ginasios) + [start_position, end_position]
@@ -43,19 +43,19 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
     D, prevs = l.matriz_distancias(mapa, pontos)
     h = heuristica.criar_heuristica(D, n)
 
-    g_inicial = l.custo(mapa, start_position)  # a origem também custa +1
-    visitados_inicial = frozenset()            # no começo nenhum ginásio foi visitado
+    g_inicial = l.custo(mapa, start_position)
+    visitados_inicial = frozenset()
 
     no_inicial = TreeNode(start_position, g_inicial + h(ORIG, visitados_inicial), g_inicial,
                           ginasios_anteriores=visitados_inicial, indice=ORIG)
 
-    fronteira = [no_inicial]                            # heap de nós (o de menor f fica na frente)
-    melhor_g = {(ORIG, visitados_inicial): g_inicial}   # menor g já encontrado de cada estado
-    fechados = set()                                    # estados já expandidos
+    fronteira = [no_inicial]
+    melhor_g = {(ORIG, visitados_inicial): g_inicial}
+    fechados = set() 
     expandidos = 0
 
     while fronteira:
-        no_atual = heapq.heappop(fronteira)             # nó de menor f
+        no_atual = heapq.heappop(fronteira)
         visitados = no_atual.get_ginasios_visitados()
 
         estado = (no_atual.indice, visitados)
@@ -79,8 +79,8 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
             return {
                 "no": no_atual,
                 "custo": no_atual.get_value_gx(),
-                "ordem": ordem,                    # símbolos dos ginásios, na ordem de visita
-                "celulas": celulas,                # lista de (x, y) do caminho completo
+                "ordem": ordem,                    #símbolos dos ginásios, na ordem de visita
+                "celulas": celulas,                #lista de (x, y) do caminho completo
                 "expandidos": expandidos,
             }
 
@@ -91,14 +91,14 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
 
         for k in proximos:
             if k < n:
-                novos_visitados = visitados | {k}  # mesmo conjunto, mais o ginásio k
+                novos_visitados = visitados | {k}  #adiciona o ginasio k no conjunto
             else:
-                novos_visitados = visitados        # ir para U não muda os visitados
+                novos_visitados = visitados        #ir para U não muda os visitados
             vizinho = (k, novos_visitados)
 
             g_novo = no_atual.get_value_gx() + D[no_atual.indice][k]
             if g_novo >= melhor_g.get(vizinho, float("inf")):
-                continue                           # já existe um caminho igual ou melhor até esse estado
+                continue
             melhor_g[vizinho] = g_novo
 
             f_novo = g_novo + h(k, novos_visitados)
@@ -107,8 +107,20 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
             novo_no.set_parent(no_atual)
             heapq.heappush(fronteira, novo_no)
 
-    print("--- A* FALHOU ---")
+    print("Erro ao calcular a rota A*\n")
     return None
+
+def percorrer_ginasios(ordem):
+    sa.reiniciar_percurso()
+    c_batalhas = 0.0
+    for k, ginasio in enumerate(ordem):
+        custo_batalha = sa.simulated_annealing_ginasio(ginasio)
+        c_batalhas += custo_batalha
+        retorno = sa.historico[-1]
+        equipe = retorno[1]
+        print(f"{ginasio:>2}:{', '.join(equipe)}. Custo = {custo_batalha:7f}")
+    return c_batalhas
+
 
 if __name__ == "__main__":
     nome_mapa = 'mapa.txt'
@@ -117,11 +129,22 @@ if __name__ == "__main__":
 
     resultado = busca_a_estrela(mapa, start, end, coordenadas_ginasios)
 
-    l.print_solution_map(mapa,  resultado["celulas"],end)
+    if resultado is None:
+        raise SystemExit("Não foi possível encontrar uma rota.")
 
-    if resultado is not None:
-        print("\n--- CAMINHO ENCONTRADO! ---")
-        print("Ordem dos ginásios:", " -> ".join(["1"] + resultado["ordem"] + ["U"]))
-        print("Custo da rota:", resultado["custo"])
-        print("Estados expandidos:", resultado["expandidos"])
-        print("Células no caminho:", len(resultado["celulas"]))
+    l.print_solution_map(mapa, resultado["celulas"], end)
+
+    ordem = resultado["ordem"]
+    c_rota = resultado["custo"]
+
+    print("Ordem dos ginásios:", " -> ".join(["1"] + ordem + ["U"]))
+    c_batalhas = percorrer_ginasios(ordem)
+
+    print("\nEnergia dos Pokémon:")
+    for nome, e in sa.energia_atual.items():
+        print(f"{nome:<12} {e}")
+
+    c_total = c_rota + c_batalhas
+    print(f"\nCusto das batalhas = {c_batalhas:.4f}")
+    print(f"\nCusto da rota = {c_rota:.4f}")
+    print(f"\nCusto total = {c_total:.4f}")
