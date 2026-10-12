@@ -155,7 +155,10 @@ def h(i, energia):
 
 
 def a_estrela():
-    inicio = (0, (ENERGIA,) * len(POKEMONS))
+    energia_inicial = []
+    for k in range(len(POKEMONS)):
+      energia_inicial.append(ENERGIA)        # um 6 para cada Pokémon
+    inicio = (0, tuple(energia_inicial))       # (0, (6, 6, 6, 6, 6))
     fronteira = [TreeNode(inicio, h(*inicio), gx=0.0)]
     melhor_g = {inicio: 0.0}
     expandidos = 0
