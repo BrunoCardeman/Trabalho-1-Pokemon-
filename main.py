@@ -27,7 +27,6 @@ from treeNode import TreeNode
 import lib as l
 import heuristica
 import heapq
-import time
 
 lista_Ginasios = g.ginasios
 lista_Pokemons = g.pokemons
@@ -50,36 +49,28 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
     no_inicial = TreeNode(start_position, g_inicial + h(ORIG, visitados_inicial), g_inicial,
                           ginasios_anteriores=visitados_inicial, indice=ORIG)
 
-    fronteira = [no_inicial]                       # heap de nós (o de menor f fica na frente)
+    fronteira = [no_inicial]                            # heap de nós (o de menor f fica na frente)
     melhor_g = {(ORIG, visitados_inicial): g_inicial}   # menor g já encontrado de cada estado
-    fechados = set()                               # estados já expandidos
+    fechados = set()                                    # estados já expandidos
     expandidos = 0
-    inicio = time.time()
 
     while fronteira:
-
-        no_atual = heapq.heappop(fronteira)        # nó de menor f
+        no_atual = heapq.heappop(fronteira)             # nó de menor f
         visitados = no_atual.get_ginasios_visitados()
 
         estado = (no_atual.indice, visitados)
         if estado in fechados:
-            continue                               # já expandi este estado, ignora
+            continue                            
         fechados.add(estado)
         expandidos += 1
 
-        #l.printMap(mapa,no_atual.coord)
-        #time.sleep(0.1)
-
-        # ---- chegou em U (só é gerado depois de visitar todos): reconstrói e devolve ----
         if no_atual.indice == DEST:
             indices = []
             no = no_atual
             while no is not None:
                 indices.append(no.indice)
                 no = no.get_parent()
-            indices.reverse()                      # [ORIG, g1, g2, ..., g24, DEST]
-
-            # caminho célula a célula (concatena os caminhos do Dijkstra entre pontos consecutivos)
+            indices.reverse()
             celulas = [start_position]
             for a, b in zip(indices, indices[1:]):
                 celulas += l.caminho_dijkstra(prevs[a], pontos[a], pontos[b])[1:]
@@ -91,10 +82,8 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
                 "ordem": ordem,                    # símbolos dos ginásios, na ordem de visita
                 "celulas": celulas,                # lista de (x, y) do caminho completo
                 "expandidos": expandidos,
-                "tempo": time.time() - inicio,
             }
 
-        # ---- expande: ir para cada ginásio ainda não visitado (ou para U se todos visitados) ----
         if len(visitados) == n:
             proximos = [DEST]
         else:
@@ -121,7 +110,6 @@ def busca_a_estrela(mapa, start_position, end_position, coordenadas_ginasios):
     print("--- A* FALHOU ---")
     return None
 
-
 if __name__ == "__main__":
     nome_mapa = 'mapa.txt'
     mapa, start, end = l.read_file(nome_mapa)
@@ -136,5 +124,4 @@ if __name__ == "__main__":
         print("Ordem dos ginásios:", " -> ".join(["1"] + resultado["ordem"] + ["U"]))
         print("Custo da rota:", resultado["custo"])
         print("Estados expandidos:", resultado["expandidos"])
-        print(f"Tempo da busca: {resultado['tempo']:.1f}s")
         print("Células no caminho:", len(resultado["celulas"]))
