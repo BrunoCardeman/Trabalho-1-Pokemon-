@@ -116,7 +116,7 @@ def main():
     altura = len(mapa) * TILE_SIZE
 
     screen = pygame.display.set_mode((largura, altura))
-    pygame.display.set_caption("Trabalho 1 - IA | Rota A*")
+    pygame.display.set_caption("Trabalho 1 - IA")
     clock = pygame.time.Clock()
 
     sprites = carregar_sprites()
