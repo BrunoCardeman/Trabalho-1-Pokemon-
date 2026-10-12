@@ -11,7 +11,7 @@ import statistics
 from itertools import combinations
 
 import geral
-from geral import treeNode
+from treeNode import TreeNode
 
 # ------------------------- CONFIGURAÇÃO (lida do geral.py) -------------------------
 # geral.pokemons = [[energia, poder], ...] na ordem abaixo (não guarda os nomes)
@@ -119,6 +119,122 @@ def simulated_annealing(T=50.0, alpha=0.9999, T_min=0.001):
     return melhor, c_melhor
 
 
+
+# ------------------------- SA POR GINÁSIO (chamado pela main a cada parada) -------------------------
+# O estado do percurso fica aqui: a energia atual de cada Pokémon e o histórico das batalhas.
+energia_atual = {}
+historico = []          # lista de (ginasio, equipe, custo_da_batalha), na ordem em que foram visitados
+
+
+def reiniciar_percurso():
+    """Todos os Pokémon voltam à energia inicial e o histórico é apagado."""
+    energia_atual.clear()
+    for p in POKEMONS:
+        energia_atual[p] = ENERGIA
+    historico.clear()
+
+
+reiniciar_percurso()
+
+
+def _valida_plano(equipes, energia):
+    """equipes[i] = equipe do i-ésimo ginásio que ainda falta (o 1º é o ginásio atual).
+    Vale se: todo ginásio tem alguém, ninguém fica com energia negativa e sobra
+    pelo menos 1 de energia no total (=> algum Pokémon termina com energia >= 1)."""
+    uso = {p: 0 for p in POKEMONS}
+    for eq in equipes:
+        if not eq:
+            return False
+        for p in eq:
+            uso[p] += 1
+    sobra = 0
+    for p in POKEMONS:
+        resto = energia[p] - uso[p]
+        if resto < 0:
+            return False
+        sobra += resto
+    return sobra >= 1
+
+
+def _vizinho_plano(equipes, energia):
+    """Devolve (nova_solucao, indices_dos_ginasios_alterados) ou None."""
+    for _ in range(200):
+        nova = [list(e) for e in equipes]
+        a = random.randrange(len(nova))
+        afetados = [a]
+        p, q = random.sample(POKEMONS, 2)
+        op = random.choice([0, 1, 2])
+        if op == 0:                                   # põe/tira p do ginásio a
+            if p in nova[a]:
+                nova[a].remove(p)
+            else:
+                nova[a].append(p)
+        elif op == 1 and len(nova) > 1:               # move p do ginásio a para o b
+            b = random.choice([i for i in range(len(nova)) if i != a])
+            if p in nova[a] and p not in nova[b]:
+                nova[a].remove(p)
+                nova[b].append(p)
+                afetados = [a, b]
+        elif p in nova[a] and q not in nova[a]:       # troca p por q no ginásio a
+            nova[a].remove(p)
+            nova[a].append(q)
+        if nova != equipes and _valida_plano(nova, energia):
+            return nova, afetados
+    return None
+
+
+def _annealing_plano(ginasios, energia, T, alpha, T_min):
+    """SA sobre os ginásios dados (o 1º é onde o personagem está) com as energias dadas."""
+    m = len(ginasios)
+    resto = dict(energia)
+    atual = []
+    for _ in range(m):                                # inicial: um Pokémon por ginásio,
+        p = max(POKEMONS, key=lambda x: resto[x])     # sempre o que tem mais energia
+        resto[p] -= 1
+        atual.append([p])
+    if not _valida_plano(atual, energia):
+        raise ValueError("Energia insuficiente para cobrir os ginásios restantes.")
+
+    c_atual = sum(tempo(ginasios[i], atual[i]) for i in range(m))
+    melhor, c_melhor = atual, c_atual
+    while T > T_min:
+        viz = _vizinho_plano(atual, energia)
+        if viz is not None:
+            cand, afetados = viz
+            delta = 0
+            for i in afetados:
+                delta += tempo(ginasios[i], cand[i]) - tempo(ginasios[i], atual[i])
+            if delta < 0 or random.random() < math.exp(-delta / T):
+                atual, c_atual = cand, c_atual + delta
+                if c_atual < c_melhor:
+                    melhor, c_melhor = atual, c_atual
+        T *= alpha
+    return melhor, c_melhor
+
+
+def simulated_annealing_ginasio(ginasio, T=30.0, alpha=0.9995, T_min=0.01):
+    """Chamada a cada ginásio visitado.
+    Recebe o símbolo do ginásio (ex.: "2", "B"), escolhe com SA quais Pokémon lutam
+    ali (respeitando as energias atuais e deixando energia para os ginásios que
+    ainda faltam), desconta 1 de energia de cada Pokémon usado, registra no
+    histórico e RETORNA O CUSTO DA BATALHA (dificuldade / poder total da equipe)."""
+    visitados = [h[0] for h in historico]
+    if ginasio not in DIFICULDADE:
+        raise ValueError(f"Ginásio desconhecido: {ginasio}")
+    if ginasio in visitados:
+        raise ValueError(f"Ginásio {ginasio} já foi visitado.")
+
+    futuros = [g for g in GINASIOS if g != ginasio and g not in visitados]
+    plano, _ = _annealing_plano([ginasio] + futuros, dict(energia_atual), T, alpha, T_min)
+    equipe = plano[0]                      # só a decisão deste ginásio é aplicada
+
+    for p in equipe:
+        energia_atual[p] -= 1              # cada Pokémon que luta gasta 1 de energia
+    custo_batalha = tempo(ginasio, equipe)
+    historico.append((ginasio, list(equipe), custo_batalha))
+    return custo_batalha
+
+
 # ------------------------- A* (ótimo global) -------------------------
 # Estado: (próximo ginásio, energia de cada Pokémon)
 # Ação:   escolher uma equipe entre os Pokémon acordados
@@ -142,6 +258,8 @@ for eq in equipes:
         EQUIPES.append(eq)
 
 def h(i, energia):
+    if i == len(GINASIOS):
+        return 0                      # estado objetivo: nada mais a lutar
     poder = 0
     for k in range(len(POKEMONS)):
         if energia[k] > 0:
@@ -152,6 +270,7 @@ def h(i, energia):
     total_dificuldade = 0
     for g in GINASIOS[i:]:
         total_dificuldade = total_dificuldade + DIFICULDADE[g]
+    return total_dificuldade / poder
 
 
 def a_estrela():
